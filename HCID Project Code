@@ -1,0 +1,224 @@
+
+#NeuroWeave – Adaptive Cognitive Interface 
+
+#FRONTEND (index.html):
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroWeave Adaptive Interface</title>
+
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            transition: background-color 0.5s ease;
+        }
+
+        .container {
+            margin-top: 80px;
+        }
+
+        h1 {
+            font-size: 28px;
+        }
+
+        .card {
+            display: inline-block;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            background: white;
+        }
+
+        button {
+            padding: 12px 25px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .status {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .metrics {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>NeuroWeave Adaptive Cognitive Interface</h1>
+
+    <div class="card">
+        <button onclick="trackClick()">Click Me</button>
+
+        <div class="status" id="status">User Status: Normal</div>
+
+        <div class="metrics">
+            Click Count: <span id="clickCount">0</span><br>
+            Last Delay: <span id="delay">0</span> ms
+        </div>
+    </div>
+</div>
+
+<script>
+/* ===============================
+   GLOBAL VARIABLES
+================================ */
+let clickCount = 0;
+let lastClickTime = Date.now();
+
+/* ===============================
+   EVENT HANDLER
+================================ */
+function trackClick() {
+    const currentTime = Date.now();
+    const delay = currentTime - lastClickTime;
+    lastClickTime = currentTime;
+
+    clickCount++;
+
+    updateMetrics(clickCount, delay);
+
+    sendDataToBackend(clickCount, delay);
+}
+
+/* ===============================
+   UPDATE UI METRICS
+================================ */
+function updateMetrics(clicks, delay) {
+    document.getElementById("clickCount").innerText = clicks;
+    document.getElementById("delay").innerText = delay;
+}
+
+/* ===============================
+   BACKEND COMMUNICATION
+================================ */
+function sendDataToBackend(clicks, delay) {
+    fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clicks: clicks, delay: delay })
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateStatus(data.state);
+        adaptUI(data.state);
+    })
+    .catch(error => console.error("Error:", error));
+}
+
+/* ===============================
+   UPDATE STATUS
+================================ */
+function updateStatus(state) {
+    document.getElementById("status").innerText = "User Status: " + state;
+}
+
+/* ===============================
+   ADAPTIVE UI ENGINE
+================================ */
+function adaptUI(state) {
+    switch(state) {
+        case "Stressed":
+            document.body.style.backgroundColor = "#ffcccc";
+            break;
+
+        case "Confused":
+            document.body.style.backgroundColor = "#ffffcc";
+            break;
+
+        default:
+            document.body.style.backgroundColor = "#ccffcc";
+    }
+}
+</script>
+
+</body>
+</html>
+
+
+
+
+#BACKEND (Python Flask – app.py):
+
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+# =====================================
+# CONFIGURATION
+# =====================================
+STRESS_CLICK_THRESHOLD = 5
+FAST_CLICK_DELAY = 1000
+CONFUSION_DELAY = 3000
+
+
+# =====================================
+# CORE ANALYSIS ENGINE
+# =====================================
+class CognitiveAnalyzer:
+
+    @staticmethod
+    def detect_confusion(delay):
+        return delay > CONFUSION_DELAY
+
+    @staticmethod
+    def detect_stress(clicks, delay):
+        return clicks > STRESS_CLICK_THRESHOLD and delay < FAST_CLICK_DELAY
+
+    @staticmethod
+    def determine_state(clicks, delay):
+        if CognitiveAnalyzer.detect_confusion(delay):
+            return "Confused"
+        elif CognitiveAnalyzer.detect_stress(clicks, delay):
+            return "Stressed"
+        else:
+            return "Normal"
+
+
+# =====================================
+# API ROUTES
+# =====================================
+@app.route('/')
+def home():
+    return "NeuroWeave Backend Running"
+
+
+@app.route('/analyze', methods=['POST'])
+def analyze():
+    try:
+        data = request.get_json()
+
+        clicks = data.get('clicks', 0)
+        delay = data.get('delay', 0)
+
+        state = CognitiveAnalyzer.determine_state(clicks, delay)
+
+        response = {
+            "state": state,
+            "clicks": clicks,
+            "delay": delay
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =====================================
+# RUN SERVER
+# =====================================
+if __name__ == '__main__':
+    app.run(debug=True)
+
